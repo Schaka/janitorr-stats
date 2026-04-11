@@ -1,13 +1,14 @@
 package com.github.schaka.janitorrstats.api
 
 import java.time.Instant
+import java.util.UUID
 
 /**
  * Response model for a play event returned by the history API.
  * Contains no Jellyfin internal IDs — only user-facing data.
  */
 data class PlayEventResponse(
-    val userId: String,
+    val userId: UUID,
     val username: String,
     val seasonNumber: Int?,
     val episodeNumber: Int?,
