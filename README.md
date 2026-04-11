@@ -1,4 +1,4 @@
-# Navidrome Stats — Jellyfin Viewing History Service
+# Janitorr Stats - Jellyfin Viewing History Service
 
 > A lightweight companion microservice for [Janitorr](https://github.com/Schaka/janitorr) that archives Jellyfin viewing history against stable external IDs.
 
@@ -6,7 +6,7 @@
 
 ## Why This Exists
 
-Jellyfin stats applications like Jellystat and Streamystats store and query viewing history using Jellyfin's internal item IDs. Those IDs are not stable — they change when a library is rescanned, when media files are moved, or when a server is migrated. The result is broken history lookups and missing data.
+Jellyfin stats applications like Jellystat and Streamystats store and query viewing history using Jellyfin's internal item IDs. Those IDs are not stable - they change when a library is rescanned, when media files are moved, or when a server is migrated. The result is broken history lookups and missing data.
 
 This service solves that by:
 
@@ -20,32 +20,32 @@ It is intentionally minimal. There is no UI, no statistics aggregation, no dashb
 
 ## Tech Stack
 
-- **Kotlin** — primary language
-- **Quarkus** — framework; chosen for its mature GraalVM native image pipeline and multi-arch Docker support
-- **Hibernate + Panache** — persistence, repository pattern
-- **Flyway** — database migrations, per-vendor SQL paths
-- **PostgreSQL** — production database
-- **SQLite** — lightweight alternative for NAS, SBC, or single-user deployments
-- **GraalVM / Mandrel** — native compilation to `linux/amd64` and `linux/arm64`
+- **Kotlin** - primary language
+- **Quarkus** - framework; chosen for its mature GraalVM native image pipeline and multi-arch Docker support
+- **Hibernate + Panache** - persistence, repository pattern
+- **Flyway** - database migrations, per-vendor SQL paths
+- **PostgreSQL** - production database
+- **SQLite** - lightweight alternative for NAS, SBC, or single-user deployments
+- **GraalVM / Mandrel** - native compilation to `linux/amd64` and `linux/arm64`
 
 ---
 
 ## Deployment
 
-The service is distributed as a multi-arch Docker image supporting `linux/amd64` and `linux/arm64`. No JVM is required at runtime — the image contains a natively compiled binary.
+The service is distributed as a multi-arch Docker image supporting `linux/amd64` and `linux/arm64`. No JVM is required at runtime - the image contains a natively compiled binary.
 
 ### Docker Compose (PostgreSQL)
 
 ```yaml
 services:
-  jfhist:
-    image: ghcr.io/schaka/jfhist:latest
+  janitorr-stats:
+    image: ghcr.io/schaka/janitorr-stats:stable
     environment:
       JELLYFIN_BASE_URL: http://your-jellyfin:8096
       JELLYFIN_API_KEY: your_api_key_here
       QUARKUS_DATASOURCE_DB_KIND: postgresql
       QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://db:5432/jfhist
-      QUARKUS_DATASOURCE_USERNAME: jfhist
+      QUARKUS_DATASOURCE_USERNAME: janitorr
       QUARKUS_DATASOURCE_PASSWORD: secret
     ports:
       - "8080:8080"
@@ -53,10 +53,10 @@ services:
       - db
 
   db:
-    image: postgres:16
+    image: postgres:18
     environment:
-      POSTGRES_DB: jfhist
-      POSTGRES_USER: jfhist
+      POSTGRES_DB: janitorr
+      POSTGRES_USER: janitorr
       POSTGRES_PASSWORD: secret
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -69,13 +69,13 @@ volumes:
 
 ```yaml
 services:
-  jfhist:
-    image: ghcr.io/schaka/jfhist:latest
+  janitorr-stats:
+    image: ghcr.io/schaka/janitorr:stable
     environment:
       JELLYFIN_BASE_URL: http://your-jellyfin:8096
       JELLYFIN_API_KEY: your_api_key_here
       QUARKUS_DATASOURCE_DB_KIND: sqlite
-      QUARKUS_DATASOURCE_JDBC_URL: jdbc:sqlite:/data/jfhist.db
+      QUARKUS_DATASOURCE_JDBC_URL: jdbc:sqlite:/data/janitorr-stats.db
     ports:
       - "8080:8080"
     volumes:
@@ -88,13 +88,13 @@ services:
 
 | Environment Variable | Default | Required | Description |
 |---|---|---|---|
-| `JELLYFIN_BASE_URL` | — | Yes | Base URL of your Jellyfin instance |
-| `JELLYFIN_API_KEY` | — | Yes | API key with read access |
+| `JELLYFIN_BASE_URL` | - | Yes | Base URL of your Jellyfin instance |
+| `JELLYFIN_API_KEY` | - | Yes | API key with read access |
 | `JELLYFIN_POLL_INTERVAL` | `60s` | No | Polling interval for active sessions |
 | `QUARKUS_DATASOURCE_DB_KIND` | `postgresql` | No | `postgresql` or `sqlite` |
-| `QUARKUS_DATASOURCE_JDBC_URL` | — | Yes | Full JDBC URL for chosen database |
-| `QUARKUS_DATASOURCE_USERNAME` | — | PostgreSQL only | |
-| `QUARKUS_DATASOURCE_PASSWORD` | — | PostgreSQL only | |
+| `QUARKUS_DATASOURCE_JDBC_URL` | - | Yes | Full JDBC URL for chosen database |
+| `QUARKUS_DATASOURCE_USERNAME` | - | PostgreSQL only | |
+| `QUARKUS_DATASOURCE_PASSWORD` | - | PostgreSQL only | |
 
 ---
 
@@ -149,8 +149,8 @@ Returns play history for a TV series, optionally filtered to a specific season o
 | `imdbId` | string | IMDB ID of the series |
 | `tmdbId` | string | TMDB series ID |
 | `tvdbId` | string | TVDB series ID |
-| `season` | integer | Optional — filter by season number |
-| `episode` | integer | Optional — filter by episode number within the season |
+| `season` | integer | Optional - filter by season number |
+| `episode` | integer | Optional - filter by episode number within the season |
 
 **Example:**
 
@@ -178,65 +178,27 @@ GET /history/shows?tvdbId=121361&season=3&episode=9
 ]
 ```
 
-When multiple IDs are provided, they are ANDed — all must match the same series record. This prevents false positives from ID collisions across external databases.
+When multiple IDs are provided, they are ANDed - all must match the same series record. This prevents false positives from ID collisions across external databases.
 
 ---
 
-## How Polling Works
+## Running Locally
 
-On a configurable schedule (default: every 60 seconds), the service:
+**Prerequisites:** Java 25, Docker (used by Testcontainers to provision local services)
 
-1. Calls Jellyfin's `/Sessions` endpoint to retrieve active and recently-ended play sessions
-2. For each session, calls `/Items/{id}` to resolve the Jellyfin item ID to external IDs (IMDB, TMDB, TVDB)
-3. Upserts a `media_items` record using external IDs as the natural key — the Jellyfin ID is stored alongside it for debugging only
-4. Records a `play_event` if the session represents new or changed activity
-
-On startup, the service also runs a backfill pass against Jellyfin's activity log to recover events that occurred while it was offline.
-
-Jellyfin's internal item IDs are used only as transient lookup handles during the poll pass. They are never used as keys, foreign keys, or in any query path.
-
----
-
-## Database Design
-
-All history is stored against external IDs. Jellyfin's internal IDs appear only in dedicated columns marked for debug use — they have no role in joins, lookups, or API responses.
-
+```bash
+./gradlew quarkusDev
 ```
-media_items
-  id (PK)
-  media_type         MOVIE | SERIES
-  title
-  year
-  imdb_id            nullable
-  tmdb_id            nullable
-  tvdb_id            nullable
-  jellyfin_item_id   debug/correlation only
 
-seasons
-  id (PK)
-  media_item_id (FK)
-  season_number
-  tmdb_season_id     nullable
-  tvdb_season_id     nullable
-  jellyfin_season_id debug only
+That single command is all that is needed. Quarkus Dev Services handle the rest automatically:
 
-users
-  id (PK)
-  jellyfin_user_id   only place Jellyfin user IDs live
-  username
+- A **PostgreSQL** container is started and wired to the datasource configuration
+- A **Jellyfin** container is started, its setup wizard is completed, an API key is generated, and that key is injected into the application config at runtime - no manual Jellyfin setup is required
+- A local media library is prepared under `local-runtime/media/` with a set of DRM-free sample video files, organised into movies and TV show seasons; Jellyfin is pointed at this directory and a library scan is triggered automatically
 
-play_events
-  id (PK)
-  user_id (FK)
-  media_item_id (FK)
-  season_number      null for movies
-  episode_number     null for movies
-  played_at          UTC
-  duration_ms
-  position_ms
-  percent_complete
-  completed
-```
+Once the application is up, it will begin polling the local Jellyfin instance on the configured interval and recording play events as they occur. The Quarkus Dev UI is available at `http://localhost:8080/q/dev/` and includes live reload.
+
+When the application shuts down, the Jellyfin container is stopped. The local runtime directory persists between runs, so the library and Jellyfin configuration are reused and the setup wizard is skipped on subsequent starts.
 
 ---
 
@@ -248,37 +210,9 @@ Neither application depends on the other to run. This service has no knowledge o
 
 ---
 
-## Building from Source
-
-### JVM mode (development)
-
-```bash
-./gradlew quarkusDev
-```
-
-Dev Services will automatically start a local database. No additional setup is needed.
-
-### Native image
-
-```bash
-./gradlew build -Dquarkus.package.type=native
-```
-
-Requires GraalVM or Mandrel to be installed and on `PATH`.
-
-### Multi-arch Docker image
-
-The CI pipeline builds separate images for `linux/amd64` and `linux/arm64` and combines them into a single manifest. To build locally for a single arch:
-
-```bash
-docker build -f src/main/docker/Dockerfile.native -t jfhist .
-```
-
----
-
 ## Contributing
 
-- Kotlin only — no Java source files
+- Kotlin only - no Java source files
 - No inline comments unless explaining a non-obvious decision
 - KDoc on all public classes and methods
 - No Jellyfin internal IDs in any response model or query path
