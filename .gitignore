@@ -1,0 +1,35 @@
+HELP.md
+.gradle
+build/
+.kotlin
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+!buildpacks/
+!buildpacks/**/bin/
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+### VS Code ###
+.vscode/
+
+### MacOS crap ###
+.DS_Store
+**/.DS_Store
+
+# AI crap
+.claude
+
+# Local
+local-runtime/
+application-local.yml
+application-seedbox.yml
+docker-compose.yml
+logs

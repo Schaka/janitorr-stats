@@ -1,0 +1,57 @@
+jellyfin:
+  poll-interval: 60s
+
+quarkus:
+  application:
+    name: janitorr-stats
+
+  datasource:
+    db-kind: postgresql
+
+  hibernate-orm:
+    database:
+      generation: none
+    physical-naming-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
+
+  flyway:
+    migrate-at-start: true
+    locations: db/migration/common,db/migration/{vendor}
+
+  rest-client:
+    jellyfin-api:
+      url: ${jellyfin.base-url}
+      scope: jakarta.inject.Singleton
+
+  container-image:
+    registry: ghcr.io
+    group: schaka
+    name: janitorr-stats
+
+  jib:
+    base-jvm-image: registry.access.redhat.com/ubi9/openjdk-25-runtime:latest
+    base-native-image: quay.io/quarkus/ubi9-quarkus-micro-image:2.0
+
+  log:
+    level: INFO
+    category:
+      "com.github.schaka":
+        level: DEBUG
+
+"%dev":
+  quarkus:
+    datasource:
+      devservices:
+        enabled: true
+    flyway:
+      locations: db/migration/common,db/migration/postgres
+
+"%prod":
+  jellyfin:
+    base-url: http://localhost:8096
+    api-key: changeme
+  quarkus:
+    datasource:
+      jdbc:
+        url: jdbc:postgresql://localhost:5432/janitorr_stats
+      username: janitorr_stats
+      password: janitorr_stats
