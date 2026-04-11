@@ -79,6 +79,7 @@ jobs:
         run: |
           ./gradlew build -x test \
             -Dquarkus.native.enabled=true \
+            -Dquarkus.package.jar.enabled=false \
             -Dquarkus.native.container-build=true \
             -Dquarkus.native.container-runtime=docker \
             -Dquarkus.native.builder-image=quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-25
@@ -126,6 +127,7 @@ jobs:
         run: |
           ./gradlew build -x test \
             -Dquarkus.native.enabled=true \
+            -Dquarkus.package.jar.enabled=false \
             -Dquarkus.native.container-build=true \
             -Dquarkus.native.container-runtime=docker \
             -Dquarkus.native.builder-image=quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-25
