@@ -9,7 +9,7 @@ on:
       - 'gradle.properties'
       - '.github/workflows/**'
     branches:
-      - 'develop'
+      - 'main'
     tags:
       - '**'
 
