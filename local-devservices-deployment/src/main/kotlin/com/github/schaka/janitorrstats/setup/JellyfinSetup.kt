@@ -50,6 +50,8 @@ class JellyfinSetup(private val baseUrl: String) {
         log.info("Triggering library scan...")
         triggerScan(apiKey)
 
+        waitForLibraryReady(apiKey)
+
         return apiKey
     }
 
@@ -166,6 +168,51 @@ class JellyfinSetup(private val baseUrl: String) {
 
     private fun triggerScan(apiKey: String) {
         post("/Library/Refresh", "", token = apiKey)
+    }
+
+    /**
+     * Polls `/Items` until the count of movies with a non-zero `RunTimeTicks` stabilises,
+     * indicating that Jellyfin has finished media-probing the library. Three consecutive polls
+     * with the same non-zero count are required to guard against transient mid-probe snapshots.
+     *
+     * `RunTimeTicks` is populated by Jellyfin's FFprobe step, which runs after the initial
+     * filesystem scan. Items appear in the library as soon as the scan creates their records
+     * (using metadata from folder names), but the duration is not set until probing completes.
+     */
+    private fun waitForLibraryReady(apiKey: String) {
+        log.info("Waiting for Jellyfin library scan and media probe to complete...")
+        var stableCount = 0
+        var lastProbedCount = -1
+
+        repeat(120) { attempt ->
+            val (status, body) = get(
+                "/Items?IncludeItemTypes=Movie&Recursive=true&fields=ProviderIds",
+                token = apiKey
+            )
+            if (status in 200..299) {
+                val probedCount = Regex(""""RunTimeTicks":(\d+)""")
+                    .findAll(body)
+                    .count { it.groupValues[1].toLong() > 0 }
+
+                if (probedCount > 0 && probedCount == lastProbedCount) {
+                    stableCount++
+                    if (stableCount >= 3) {
+                        log.info("Library media probe stable: $probedCount movie(s) ready after ${attempt + 1} check(s)")
+                        return
+                    }
+                } else {
+                    stableCount = 0
+                }
+                lastProbedCount = probedCount
+
+                if (attempt % 10 == 0) {
+                    log.info("Library probe progress: $lastProbedCount movie(s) with duration")
+                }
+            }
+            Thread.sleep(2_000)
+        }
+
+        log.warn("Library scan/probe did not stabilise within 4 minutes, proceeding anyway")
     }
 
     private fun post(

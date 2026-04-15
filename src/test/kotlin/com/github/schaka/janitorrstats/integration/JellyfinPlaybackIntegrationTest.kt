@@ -132,7 +132,7 @@ class JellyfinPlaybackIntegrationTest {
             val (status, body) = get(itemsUri, authHeader(apiKey))
             if (status in 200..299) {
                 val match = mapper.readValue(body, JellyfinItemPage::class.java).items
-                    .firstOrNull { it.matchesStarWars1977() }
+                    .firstOrNull { it.matchesStarWars1977() && it.runTimeTicks != null && it.runTimeTicks > 0 }
                 if (match != null) return match.id
             }
             Thread.sleep(2_000)
