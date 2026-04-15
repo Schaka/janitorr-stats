@@ -1,6 +1,7 @@
 package com.github.schaka.janitorrstats.setup
 
 import org.slf4j.LoggerFactory
+import java.io.IOException
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -55,17 +56,21 @@ class JellyfinSetup(private val baseUrl: String) {
     /**
      * Polls /Startup/Configuration until Jellyfin's wizard API is ready (not 503).
      * Returns true if the wizard still needs to be run, false if already complete.
+     *
+     * A status of -1 means the transport layer failed (connection accepted but immediately
+     * closed — Jellyfin's health check can pass before the application HTTP stack is fully
+     * initialised). This is treated identically to a 503 and retried.
      */
     private fun wizardNeeded(): Boolean {
         repeat(30) { attempt ->
-            val (status, body) = get("/Startup/Configuration")
+            val (status, _) = get("/Startup/Configuration")
             when {
                 status in 200..299 -> {
                     log.info("Jellyfin wizard API ready after {} attempt(s)", attempt + 1)
                     return true
                 }
-                status == 503 -> {
-                    log.info("Jellyfin not ready yet (503), waiting... ({}/30)", attempt + 1)
+                status == 503 || status < 0 -> {
+                    log.info("Jellyfin not ready yet (status {}), waiting... ({}/30)", status, attempt + 1)
                     Thread.sleep(2_000)
                 }
                 else -> {
@@ -180,8 +185,13 @@ class JellyfinSetup(private val baseUrl: String) {
             if (body.isEmpty()) HttpRequest.BodyPublishers.ofString("{}")
             else HttpRequest.BodyPublishers.ofString(body)
         )
-        val response = http.send(builder.build(), HttpResponse.BodyHandlers.ofString())
-        return response.statusCode() to (response.body() ?: "")
+        return try {
+            val response = http.send(builder.build(), HttpResponse.BodyHandlers.ofString())
+            response.statusCode() to (response.body() ?: "")
+        } catch (e: IOException) {
+            log.debug("POST {} failed with transport error: {}", path, e.message)
+            -1 to ""
+        }
     }
 
     private fun get(path: String, token: String? = null): Pair<Int, String> {
@@ -192,8 +202,13 @@ class JellyfinSetup(private val baseUrl: String) {
             "MediaBrowser , $AUTH_PARAMS"
         }
         builder.header("Authorization", authHeader)
-        val response = http.send(builder.build(), HttpResponse.BodyHandlers.ofString())
-        return response.statusCode() to (response.body() ?: "")
+        return try {
+            val response = http.send(builder.build(), HttpResponse.BodyHandlers.ofString())
+            response.statusCode() to (response.body() ?: "")
+        } catch (e: IOException) {
+            log.debug("GET {} failed with transport error: {}", path, e.message)
+            -1 to ""
+        }
     }
 
     /**
