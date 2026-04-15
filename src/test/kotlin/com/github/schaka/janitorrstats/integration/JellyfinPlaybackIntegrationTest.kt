@@ -128,7 +128,7 @@ class JellyfinPlaybackIntegrationTest {
             .queryParam("Fields", "ProviderIds")
             .build()
 
-        repeat(180) { attempt ->
+        repeat(60) { attempt ->
             val (status, body) = get(itemsUri, authHeader(apiKey))
             if (status in 200..299) {
                 val match = mapper.readValue(body, JellyfinItemPage::class.java).items
