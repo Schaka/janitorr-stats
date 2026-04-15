@@ -76,7 +76,8 @@ class JellyfinMediaServerClient(
             seriesId = item.seriesId,
             jellyfinSeasonId = item.seasonId,
             seasonNumber = item.parentIndexNumber,
-            episodeNumber = item.indexNumber
+            episodeNumber = item.indexNumber,
+            runTimeTicks = item.runTimeTicks
         )
     }
 }

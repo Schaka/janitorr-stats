@@ -49,13 +49,13 @@ class SessionPoller(
     private fun processSession(session: MediaServerSession) {
         val isEpisode = session.itemType == "Episode"
 
-        val resolvedSeries = if (isEpisode && session.seriesId != null) {
+        val resolvedItem = if (isEpisode && session.seriesId != null) {
             mediaServerClient.getSeriesById(session.seriesId, session.userId)
         } else {
             mediaServerClient.getItemById(session.itemId, session.userId)
         }
 
-        if (resolvedSeries == null) {
+        if (resolvedItem == null) {
             Log.debug("Could not resolve item ${session.itemId} (${session.itemName}) to external IDs, skipping")
             return
         }
@@ -63,6 +63,6 @@ class SessionPoller(
         val resolvedEpisode = if (isEpisode) mediaServerClient.getItemById(session.itemId, session.userId) else null
         val resolvedSeason = resolvedEpisode?.jellyfinSeasonId?.let { mediaServerClient.getItemById(it, session.userId) }
 
-        sessionPersistenceService.persistSession(session, resolvedSeries, resolvedEpisode, resolvedSeason)
+        sessionPersistenceService.persistSession(session, resolvedItem, resolvedEpisode, resolvedSeason)
     }
 }

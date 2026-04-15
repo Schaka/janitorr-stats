@@ -37,20 +37,21 @@ class SessionPersistenceService(
     @Transactional
     fun persistSession(
         session: MediaServerSession,
-        resolvedSeries: ResolvedMediaItem,
+        resolvedItem: ResolvedMediaItem,
         resolvedEpisode: ResolvedMediaItem?,
         resolvedSeason: ResolvedMediaItem?
     ) {
         val isEpisode = session.itemType == "Episode"
 
         val user = upsertUser(session.userId, session.username)
-        val mediaItem = upsertMediaItem(resolvedSeries, isEpisode)
+        val mediaItem = upsertMediaItem(resolvedItem, isEpisode)
 
         if (isEpisode && session.seasonNumber != null) {
             upsertSeason(mediaItem, session.seasonNumber, resolvedSeason, resolvedEpisode?.jellyfinSeasonId)
         }
 
-        val durationMs = session.runtimeTicks?.let { it / TICKS_PER_MS } ?: 0L
+        val itemRuntimeTicks = if (isEpisode) resolvedEpisode?.runTimeTicks else resolvedItem.runTimeTicks
+        val durationMs = (session.runtimeTicks ?: itemRuntimeTicks)?.let { it / TICKS_PER_MS } ?: 0L
         val positionMs = session.positionTicks?.let { it / TICKS_PER_MS } ?: 0L
         val percentComplete = if (durationMs > 0) ((positionMs * 100) / durationMs).toInt().coerceIn(0, 100) else 0
 

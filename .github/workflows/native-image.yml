@@ -45,7 +45,6 @@ jobs:
         with:
           java-version: '25'
           distribution: 'temurin'
-          cache: 'gradle'
 
       - uses: gradle/actions/setup-gradle@v6
 
@@ -93,7 +92,6 @@ jobs:
         with:
           java-version: '25'
           distribution: 'temurin'
-          cache: 'gradle'
 
       - uses: gradle/actions/setup-gradle@v6
 
@@ -157,7 +155,6 @@ jobs:
         with:
           java-version: '25'
           distribution: 'temurin'
-          cache: 'gradle'
 
       - uses: gradle/actions/setup-gradle@v6
 

@@ -58,5 +58,6 @@ data class ResolvedMediaItem(
     val seriesId: String?,
     val jellyfinSeasonId: String?,
     val seasonNumber: Int?,
-    val episodeNumber: Int?
+    val episodeNumber: Int?,
+    val runTimeTicks: Long? = null
 )
