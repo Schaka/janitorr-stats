@@ -1,9 +1,15 @@
 package com.github.schaka.janitorrstats.integration
 
-import com.fasterxml.jackson.annotation.JsonProperty
-import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.github.schaka.janitorrstats.config.JellyfinConfig
+import com.github.schaka.janitorrstats.mediaserver.jellyfin.JellyfinAuthRequest
+import com.github.schaka.janitorrstats.mediaserver.jellyfin.JellyfinAuthResponse
+import com.github.schaka.janitorrstats.mediaserver.jellyfin.JellyfinItem
+import com.github.schaka.janitorrstats.mediaserver.jellyfin.JellyfinItemPage
+import com.github.schaka.janitorrstats.mediaserver.jellyfin.JellyfinPlaybackProgressRequest
+import com.github.schaka.janitorrstats.mediaserver.jellyfin.JellyfinPlaybackStartRequest
+import com.github.schaka.janitorrstats.mediaserver.jellyfin.JellyfinPlaybackStopRequest
+import com.github.schaka.janitorrstats.mediaserver.jellyfin.JellyfinSession
 import com.github.schaka.janitorrstats.persistence.repository.MediaItemRepository
 import com.github.schaka.janitorrstats.persistence.repository.PlayEventRepository
 import com.github.schaka.janitorrstats.persistence.repository.SeasonRepository
@@ -50,32 +56,6 @@ class JellyfinPlaybackIntegrationTest {
         private val http: HttpClient = HttpClient.newBuilder()
             .followRedirects(HttpClient.Redirect.ALWAYS)
             .build()
-
-        private data class AuthRequest(
-            @JsonProperty("Username") val username: String,
-            @JsonProperty("Pw") val pw: String
-        )
-
-        private data class PlaybackStartRequest(
-            @JsonProperty("ItemId") val itemId: String,
-            @JsonProperty("PlaySessionId") val playSessionId: String,
-            @JsonProperty("CanSeek") val canSeek: Boolean = true,
-            @JsonProperty("PositionTicks") val positionTicks: Long = 0
-        )
-
-        private data class PlaybackProgressRequest(
-            @JsonProperty("ItemId") val itemId: String,
-            @JsonProperty("PlaySessionId") val playSessionId: String,
-            @JsonProperty("PositionTicks") val positionTicks: Long,
-            @JsonProperty("IsPaused") val isPaused: Boolean = false,
-            @JsonProperty("CanSeek") val canSeek: Boolean = true
-        )
-
-        private data class PlaybackStopRequest(
-            @JsonProperty("ItemId") val itemId: String,
-            @JsonProperty("PlaySessionId") val playSessionId: String,
-            @JsonProperty("PositionTicks") val positionTicks: Long
-        )
     }
 
     @Inject lateinit var config: JellyfinConfig
@@ -127,15 +107,15 @@ class JellyfinPlaybackIntegrationTest {
     }
 
     private fun authenticate(baseUrl: String): Pair<String, String> {
-        val body = mapper.writeValueAsString(AuthRequest(ADMIN_USER, ADMIN_PASS))
+        val body = mapper.writeValueAsString(JellyfinAuthRequest(ADMIN_USER, ADMIN_PASS))
         val (status, responseBody) = post(uri(baseUrl, "/Users/AuthenticateByName"), body, authHeader())
         check(status in 200..299) { "Admin authentication failed: HTTP $status — $responseBody" }
 
-        val json = mapper.readTree(responseBody)
-        val userId = json.path("User").path("Id").asText()
-        val token = json.path("AccessToken").asText()
-        check(userId.isNotBlank() && token.isNotBlank()) { "Unexpected auth response: $responseBody" }
-        return userId to token
+        val authResponse = mapper.readValue(responseBody, JellyfinAuthResponse::class.java)
+        check(authResponse.user.id.isNotBlank() && authResponse.accessToken.isNotBlank()) {
+            "Unexpected auth response: $responseBody"
+        }
+        return authResponse.user.id to authResponse.accessToken
     }
 
     private fun waitForMovie(baseUrl: String, apiKey: String, userId: String): String {
@@ -148,12 +128,12 @@ class JellyfinPlaybackIntegrationTest {
             .queryParam("Fields", "ProviderIds")
             .build()
 
-        repeat(60) { attempt ->
+        repeat(180) { attempt ->
             val (status, body) = get(itemsUri, authHeader(apiKey))
             if (status in 200..299) {
-                val items = mapper.readTree(body).path("Items")
-                val match = items.firstOrNull { it.matchesStarWars1977() }
-                if (match != null) return match.path("Id").asText()
+                val match = mapper.readValue(body, JellyfinItemPage::class.java).items
+                    .firstOrNull { it.matchesStarWars1977() }
+                if (match != null) return match.id
             }
             Thread.sleep(2_000)
             if (attempt > 0 && attempt % 15 == 0) {
@@ -164,16 +144,13 @@ class JellyfinPlaybackIntegrationTest {
         error("Star Wars (1977) never appeared in Jellyfin library after 2 minutes")
     }
 
-    private fun JsonNode.matchesStarWars1977(): Boolean {
-        val imdb = path("ProviderIds").path("Imdb").asText("")
-        if (imdb == STAR_WARS_IMDB) return true
-        val name = path("Name").asText("")
-        val year = path("ProductionYear").asInt(-1)
-        return name.contains("Star Wars", ignoreCase = true) && year == 1977
+    private fun JellyfinItem.matchesStarWars1977(): Boolean {
+        if (providerIds?.imdb == STAR_WARS_IMDB) return true
+        return name.contains("Star Wars", ignoreCase = true) && productionYear == 1977
     }
 
     private fun reportPlayback(baseUrl: String, userToken: String, itemId: String, playSessionId: String) {
-        val body = mapper.writeValueAsString(PlaybackStartRequest(itemId, playSessionId))
+        val body = mapper.writeValueAsString(JellyfinPlaybackStartRequest(itemId, playSessionId))
         val (status, respBody) = post(uri(baseUrl, "/Sessions/Playing"), body, authHeader(userToken))
         check(status in 200..299) { "Failed to report playback start: HTTP $status — $respBody" }
     }
@@ -182,34 +159,33 @@ class JellyfinPlaybackIntegrationTest {
         baseUrl: String, userToken: String, itemId: String,
         playSessionId: String, positionTicks: Long
     ) {
-        val body = mapper.writeValueAsString(PlaybackProgressRequest(itemId, playSessionId, positionTicks))
+        val body = mapper.writeValueAsString(JellyfinPlaybackProgressRequest(itemId, playSessionId, positionTicks))
         val (status, respBody) = post(uri(baseUrl, "/Sessions/Playing/Progress"), body, authHeader(userToken))
         check(status in 200..299) { "Failed to report playback progress: HTTP $status — $respBody" }
     }
 
     private fun reportStopped(baseUrl: String, userToken: String, itemId: String, playSessionId: String) {
-        val body = mapper.writeValueAsString(PlaybackStopRequest(itemId, playSessionId, positionTicks = 1_200_000_000L))
+        val body = mapper.writeValueAsString(JellyfinPlaybackStopRequest(itemId, playSessionId, positionTicks = 1_200_000_000L))
         post(uri(baseUrl, "/Sessions/Playing/Stopped"), body, authHeader(userToken))
     }
 
     /**
      * The /Sessions endpoint is how [com.github.schaka.janitorrstats.mediaserver.jellyfin.JellyfinMediaServerClient]
-     * discovers playback. Wait until the reported playback shows up there before polling — the
-     * server writes are not strictly synchronous with the POSTs above.
+     * discovers playback. Wait until the reported playback shows up there with a non-zero position
+     * before polling — Jellyfin applies the progress update asynchronously, so the session can
+     * appear on /Sessions before PlayState.positionTicks reflects the reported progress.
      */
     private fun waitForSessionToAppear(baseUrl: String, apiKey: String, itemId: String) {
-        repeat(20) {
+        repeat(40) {
             val (status, body) = get(uri(baseUrl, "/Sessions"), authHeader(apiKey))
             if (status in 200..299) {
-                val sessions = mapper.readTree(body)
-                val anyMatch = sessions.any { s ->
-                    s.path("NowPlayingItem").path("Id").asText("") == itemId
-                }
-                if (anyMatch) return
+                val sessions = mapper.readValue(body, Array<JellyfinSession>::class.java)
+                val match = sessions.firstOrNull { it.nowPlayingItem?.id == itemId }
+                if (match?.playState?.positionTicks?.let { it > 0 } == true) return
             }
             Thread.sleep(500)
         }
-        error("Reported playback never surfaced on /Sessions within 10 seconds")
+        error("Reported playback with non-zero position never surfaced on /Sessions within 20 seconds")
     }
 
     private fun authHeader(token: String? = null): String =

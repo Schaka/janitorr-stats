@@ -9,8 +9,8 @@ quarkus:
     db-kind: postgresql
 
   hibernate-orm:
-    database:
-      generation: none
+    schema-management:
+      strategy: none
     physical-naming-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
 
   flyway:
@@ -25,7 +25,7 @@ quarkus:
   smallrye-openapi:
     # Write the spec to disk at build time; the runtime endpoint is not needed.
     store-schema-directory: build/openapi
-    enable: false
+    enabled: false
 
   container-image:
     registry: ghcr.io

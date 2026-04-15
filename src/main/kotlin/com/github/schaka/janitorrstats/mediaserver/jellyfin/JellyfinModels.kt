@@ -90,3 +90,50 @@ data class JellyfinUser(
     @JsonProperty("Id") val id: String = "",
     @JsonProperty("Name") val name: String = ""
 )
+
+/**
+ * Request body for `POST /Users/AuthenticateByName`.
+ */
+data class JellyfinAuthRequest(
+    @JsonProperty("Username") val username: String,
+    @JsonProperty("Pw") val pw: String
+)
+
+/**
+ * Response body from `POST /Users/AuthenticateByName`.
+ */
+@JsonIgnoreProperties(ignoreUnknown = true)
+data class JellyfinAuthResponse(
+    @JsonProperty("User") val user: JellyfinUser,
+    @JsonProperty("AccessToken") val accessToken: String
+)
+
+/**
+ * Request body for `POST /Sessions/Playing` — signals playback start.
+ */
+data class JellyfinPlaybackStartRequest(
+    @JsonProperty("ItemId") val itemId: String,
+    @JsonProperty("PlaySessionId") val playSessionId: String,
+    @JsonProperty("CanSeek") val canSeek: Boolean = true,
+    @JsonProperty("PositionTicks") val positionTicks: Long = 0
+)
+
+/**
+ * Request body for `POST /Sessions/Playing/Progress` — reports current position.
+ */
+data class JellyfinPlaybackProgressRequest(
+    @JsonProperty("ItemId") val itemId: String,
+    @JsonProperty("PlaySessionId") val playSessionId: String,
+    @JsonProperty("PositionTicks") val positionTicks: Long,
+    @JsonProperty("IsPaused") val isPaused: Boolean = false,
+    @JsonProperty("CanSeek") val canSeek: Boolean = true
+)
+
+/**
+ * Request body for `POST /Sessions/Playing/Stopped` — signals playback end.
+ */
+data class JellyfinPlaybackStopRequest(
+    @JsonProperty("ItemId") val itemId: String,
+    @JsonProperty("PlaySessionId") val playSessionId: String,
+    @JsonProperty("PositionTicks") val positionTicks: Long
+)
