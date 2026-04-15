@@ -134,16 +134,29 @@ class JellyfinSetup(private val baseUrl: String) {
     }
 
     private fun addLibraries(apiKey: String) {
-        post(
-            "/Library/VirtualFolders?name=Movies&collectionType=movies&refreshLibrary=false",
-            """{"Paths":["/media/Movies"]}""",
-            token = apiKey
-        )
-        post(
-            "/Library/VirtualFolders?name=TV+Shows&collectionType=tvshows&refreshLibrary=false",
-            """{"Paths":["/media/TV Shows"]}""",
-            token = apiKey
-        )
+        val (_, existingBody) = get("/Library/VirtualFolders", token = apiKey)
+
+        // paths must be a query parameter, not a body field — AddVirtualFolderDto only carries LibraryOptions.
+        // Slashes and spaces in the path value are percent-encoded so URI.create() handles them correctly.
+        if (!existingBody.contains(""""Name":"Movies"""")) {
+            post(
+                "/Library/VirtualFolders?name=Movies&collectionType=movies&refreshLibrary=false&paths=%2Fmedia%2FMovies",
+                "",
+                token = apiKey
+            )
+        } else {
+            log.info("Movies library already exists, skipping")
+        }
+
+        if (!existingBody.contains(""""Name":"TV%20Shows"""") && !existingBody.contains(""""Name":"TV Shows"""")) {
+            post(
+                "/Library/VirtualFolders?name=TV%20Shows&collectionType=tvshows&refreshLibrary=false&paths=%2Fmedia%2FTV%20Shows",
+                "",
+                token = apiKey
+            )
+        } else {
+            log.info("TV Shows library already exists, skipping")
+        }
     }
 
     private fun triggerScan(apiKey: String) {

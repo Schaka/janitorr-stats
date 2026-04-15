@@ -22,6 +22,11 @@ quarkus:
       url: ${jellyfin.base-url}
       scope: jakarta.inject.Singleton
 
+  smallrye-openapi:
+    # Write the spec to disk at build time; the runtime endpoint is not needed.
+    store-schema-directory: build/openapi
+    enable: false
+
   container-image:
     registry: ghcr.io
     group: schaka
@@ -45,13 +50,3 @@ quarkus:
     flyway:
       locations: db/migration/common,db/migration/postgres
 
-"%prod":
-  jellyfin:
-    base-url: http://localhost:8096
-    api-key: changeme
-  quarkus:
-    datasource:
-      jdbc:
-        url: jdbc:postgresql://localhost:5432/janitorr_stats
-      username: janitorr_stats
-      password: janitorr_stats

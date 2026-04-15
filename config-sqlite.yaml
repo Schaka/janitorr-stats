@@ -1,0 +1,10 @@
+jellyfin:
+  base-url: http://your-jellyfin:8096
+  api-key: your_api_key_here
+  poll-interval: 60s # How often Jellyfin is queried for watch sessions
+
+quarkus:
+  datasource:
+    db-kind: sqlite
+    jdbc:
+      url: jdbc:sqlite:/data/janitorr-stats.db

@@ -34,19 +34,18 @@ It is intentionally minimal. There is no UI, no statistics aggregation, no dashb
 
 The service is distributed as a multi-arch Docker image supporting `linux/amd64` and `linux/arm64`. No JVM is required at runtime - the image contains a natively compiled binary.
 
+Configuration is supplied by mounting a YAML file into the container at `/work/config/application.yaml`. The repo provides two ready-to-use templates — pick the one matching your database, fill in your values, and mount it.
+
 ### Docker Compose (PostgreSQL)
+
+Copy [`config-postgresql.yaml`](./config-postgresql.yaml), fill in your Jellyfin URL, API key, and database credentials, then:
 
 ```yaml
 services:
   janitorr-stats:
     image: ghcr.io/schaka/janitorr-stats:stable
-    environment:
-      JELLYFIN_BASE_URL: http://your-jellyfin:8096
-      JELLYFIN_API_KEY: your_api_key_here
-      QUARKUS_DATASOURCE_DB_KIND: postgresql
-      QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://db:5432/jfhist
-      QUARKUS_DATASOURCE_USERNAME: janitorr
-      QUARKUS_DATASOURCE_PASSWORD: secret
+    volumes:
+      - ./config-postgresql.yaml:/work/config/application.yaml
     ports:
       - "8080:8080"
     depends_on:
@@ -55,8 +54,8 @@ services:
   db:
     image: postgres:18
     environment:
-      POSTGRES_DB: janitorr
-      POSTGRES_USER: janitorr
+      POSTGRES_DB: janitorr_stats
+      POSTGRES_USER: janitorr_stats
       POSTGRES_PASSWORD: secret
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -67,115 +66,142 @@ volumes:
 
 ### Docker Compose (SQLite)
 
+Copy [`config-sqlite.yaml`](./config-sqlite.yaml), fill in your Jellyfin URL and API key, and adjust the database path if needed, then:
+
 ```yaml
 services:
   janitorr-stats:
-    image: ghcr.io/schaka/janitorr:stable
-    environment:
-      JELLYFIN_BASE_URL: http://your-jellyfin:8096
-      JELLYFIN_API_KEY: your_api_key_here
-      QUARKUS_DATASOURCE_DB_KIND: sqlite
-      QUARKUS_DATASOURCE_JDBC_URL: jdbc:sqlite:/data/janitorr-stats.db
+    image: ghcr.io/schaka/janitorr-stats:stable
+    volumes:
+      - ./config-sqlite.yaml:/work/config/application.yaml
+      - ./data:/data
     ports:
       - "8080:8080"
-    volumes:
-      - ./data:/data
 ```
+
+The `/data` volume must match the path used in `quarkus.datasource.jdbc.url` inside your config file.
 
 ---
 
 ## Configuration
 
-| Environment Variable | Default | Required | Description |
-|---|---|---|---|
-| `JELLYFIN_BASE_URL` | - | Yes | Base URL of your Jellyfin instance |
-| `JELLYFIN_API_KEY` | - | Yes | API key with read access |
-| `JELLYFIN_POLL_INTERVAL` | `60s` | No | Polling interval for active sessions |
-| `QUARKUS_DATASOURCE_DB_KIND` | `postgresql` | No | `postgresql` or `sqlite` |
-| `QUARKUS_DATASOURCE_JDBC_URL` | - | Yes | Full JDBC URL for chosen database |
-| `QUARKUS_DATASOURCE_USERNAME` | - | PostgreSQL only | |
-| `QUARKUS_DATASOURCE_PASSWORD` | - | PostgreSQL only | |
+The config file format follows standard Quarkus YAML. Only the properties you include override the bundled defaults.
+
+| Property | Default | Notes |
+|---|---|---|
+| `jellyfin.base-url` | — | Required |
+| `jellyfin.api-key` | — | Required |
+| `jellyfin.poll-interval` | `60s` | Quarkus duration syntax: `30s`, `2m`, etc. |
+| `quarkus.datasource.db-kind` | `postgresql` | `postgresql` or `sqlite` |
+| `quarkus.datasource.jdbc.url` | — | Required |
+| `quarkus.datasource.username` | — | PostgreSQL only |
+| `quarkus.datasource.password` | — | PostgreSQL only |
+| `quarkus.log.category."com.github.schaka".level` | `DEBUG` | `DEBUG`, `INFO`, or `WARN` |
+
+All properties can alternatively be set as environment variables using Quarkus's standard naming convention (e.g. `jellyfin.base-url` → `JELLYFIN_BASE_URL`). Environment variables take precedence over the mounted config file.
 
 ---
 
 ## API
 
-The service exposes two endpoints.
+The OpenAPI spec is published with each release and always available at:
+
+```
+https://github.com/Schaka/janitorr-stats/releases/latest/download/openapi.yaml
+```
+
+The service exposes two endpoints. Both return paginated responses.
 
 ### `GET /history/movies`
 
-Returns play history for a movie. At least one ID parameter is required.
+Returns a page of play history for a movie. At least one ID parameter is required.
 
 **Parameters:**
 
-| Name | Type | Description |
-|---|---|---|
-| `imdbId` | string | IMDB ID, e.g. `tt1234567` |
-| `tmdbId` | string | TMDB movie ID |
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `imdbId` | string | — | IMDB ID, e.g. `tt1234567` |
+| `tmdbId` | string | — | TMDB movie ID |
+| `page` | integer | `0` | Zero-based page index |
+| `size` | integer | `100` | Number of results per page |
 
 **Example:**
 
 ```
 GET /history/movies?imdbId=tt1234567
-GET /history/movies?tmdbId=680
+GET /history/movies?tmdbId=680&page=1&size=50
 ```
 
 **Response:**
 
 ```json
-[
-  {
-    "userId": "...",
-    "username": "alice",
-    "playedAt": "2025-11-03T21:14:00Z",
-    "percentComplete": 97,
-    "completed": true,
-    "durationMs": 7234000,
-    "positionMs": 7018000
-  }
-]
+{
+  "content": [
+    {
+      "userId": "...",
+      "username": "alice",
+      "playedAt": "2025-11-03T21:14:00Z",
+      "percentComplete": 97,
+      "completed": true,
+      "durationMs": 7234000,
+      "positionMs": 7018000
+    }
+  ],
+  "page": 0,
+  "pageSize": 100,
+  "totalItems": 1,
+  "totalPages": 1
+}
 ```
 
 ---
 
 ### `GET /history/shows`
 
-Returns play history for a TV series, optionally filtered to a specific season or episode. At least one series ID parameter is required.
+Returns a page of play history for a TV series, optionally filtered to a specific season or episode. At least one series ID parameter is required.
 
 **Parameters:**
 
-| Name | Type | Description |
-|---|---|---|
-| `imdbId` | string | IMDB ID of the series |
-| `tmdbId` | string | TMDB series ID |
-| `tvdbId` | string | TVDB series ID |
-| `season` | integer | Optional - filter by season number |
-| `episode` | integer | Optional - filter by episode number within the season |
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `imdbId` | string | — | IMDB ID of the series |
+| `tmdbId` | string | — | TMDB series ID |
+| `tvdbId` | string | — | TVDB series ID |
+| `season` | integer | — | Optional - filter by season number |
+| `episode` | integer | — | Optional - filter by episode number within the season |
+| `page` | integer | `0` | Zero-based page index |
+| `size` | integer | `100` | Number of results per page |
 
 **Example:**
 
 ```
 GET /history/shows?tvdbId=121361
 GET /history/shows?tvdbId=121361&season=3
-GET /history/shows?tvdbId=121361&season=3&episode=9
+GET /history/shows?tvdbId=121361&season=3&episode=9&page=0&size=25
 ```
 
 **Response:**
 
 ```json
-[
-  {
-    "userId": "...",
-    "username": "alice",
-    "seasonNumber": 3,
-    "episodeNumber": 9,
-    "playedAt": "2025-11-04T20:00:00Z",
-    "percentComplete": 100,
-    "completed": true,
-    "durationMs": 3421000,
-    "positionMs": 3421000
-  }
-]
+{
+  "content": [
+    {
+      "userId": "...",
+      "username": "alice",
+      "seasonNumber": 3,
+      "episodeNumber": 9,
+      "playedAt": "2025-11-04T20:00:00Z",
+      "percentComplete": 100,
+      "completed": true,
+      "durationMs": 3421000,
+      "positionMs": 3421000
+    }
+  ],
+  "page": 0,
+  "pageSize": 25,
+  "totalItems": 1,
+  "totalPages": 1
+}
 ```
 
 When multiple IDs are provided, they are ANDed - all must match the same series record. This prevents false positives from ID collisions across external databases.

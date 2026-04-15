@@ -50,9 +50,9 @@ class SessionPoller(
         val isEpisode = session.itemType == "Episode"
 
         val resolvedSeries = if (isEpisode && session.seriesId != null) {
-            mediaServerClient.getSeriesById(session.seriesId)
+            mediaServerClient.getSeriesById(session.seriesId, session.userId)
         } else {
-            mediaServerClient.getItemById(session.itemId)
+            mediaServerClient.getItemById(session.itemId, session.userId)
         }
 
         if (resolvedSeries == null) {
@@ -60,8 +60,8 @@ class SessionPoller(
             return
         }
 
-        val resolvedEpisode = if (isEpisode) mediaServerClient.getItemById(session.itemId) else null
-        val resolvedSeason = resolvedEpisode?.jellyfinSeasonId?.let { mediaServerClient.getItemById(it) }
+        val resolvedEpisode = if (isEpisode) mediaServerClient.getItemById(session.itemId, session.userId) else null
+        val resolvedSeason = resolvedEpisode?.jellyfinSeasonId?.let { mediaServerClient.getItemById(it, session.userId) }
 
         sessionPersistenceService.persistSession(session, resolvedSeries, resolvedEpisode, resolvedSeason)
     }

@@ -1,32 +1,36 @@
 package com.github.schaka.janitorrstats.api
 
+import com.github.schaka.janitorrstats.persistence.entity.MediaType
 import com.github.schaka.janitorrstats.persistence.entity.PlayEvent
 import com.github.schaka.janitorrstats.persistence.repository.PlayEventRepository
+import io.quarkus.panache.common.Page
+import jakarta.ws.rs.DefaultValue
 import jakarta.ws.rs.GET
 import jakarta.ws.rs.Path
 import jakarta.ws.rs.Produces
 import jakarta.ws.rs.QueryParam
-import jakarta.ws.rs.core.MediaType
 import jakarta.ws.rs.core.Response
 
 /**
  * REST resource for querying play history by external media IDs.
  */
 @Path("/history")
-@Produces(MediaType.APPLICATION_JSON)
+@Produces("application/json")
 class HistoryResource(
     private val playEventRepository: PlayEventRepository
 ) {
 
     /**
-     * Returns play history for a movie identified by IMDB or TMDB ID.
+     * Returns a page of play history for a movie identified by IMDB or TMDB ID.
      * At least one ID parameter is required.
      */
     @GET
     @Path("/movies")
     fun getMovieHistory(
         @QueryParam("imdbId") imdbId: String?,
-        @QueryParam("tmdbId") tmdbId: String?
+        @QueryParam("tmdbId") tmdbId: String?,
+        @QueryParam("page") @DefaultValue("0") page: Int,
+        @QueryParam("size") @DefaultValue("100") pageSize: Int
     ): Response {
         if (imdbId == null && tmdbId == null) {
             return Response.status(Response.Status.BAD_REQUEST)
@@ -34,19 +38,22 @@ class HistoryResource(
                 .build()
         }
 
-        val events = playEventRepository.findByExternalIds(
+        val panachePage = Page.of(page, pageSize)
+        val (events, total) = playEventRepository.findByExternalIds(
+            mediaType = MediaType.MOVIE,
             imdbId = imdbId,
             tmdbId = tmdbId,
             tvdbId = null,
             seasonNumber = null,
-            episodeNumber = null
+            episodeNumber = null,
+            page = panachePage
         )
 
-        return Response.ok(events.map { it.toResponse() }).build()
+        return Response.ok(PagedResponse.of(events.map { it.toResponse() }, page, pageSize, total)).build()
     }
 
     /**
-     * Returns play history for a TV series, optionally filtered by season and episode.
+     * Returns a page of play history for a TV series, optionally filtered by season and episode.
      * At least one series ID parameter is required.
      */
     @GET
@@ -56,7 +63,9 @@ class HistoryResource(
         @QueryParam("tmdbId") tmdbId: String?,
         @QueryParam("tvdbId") tvdbId: String?,
         @QueryParam("season") season: Int?,
-        @QueryParam("episode") episode: Int?
+        @QueryParam("episode") episode: Int?,
+        @QueryParam("page") @DefaultValue("0") page: Int,
+        @QueryParam("size") @DefaultValue("100") pageSize: Int
     ): Response {
         if (imdbId == null && tmdbId == null && tvdbId == null) {
             return Response.status(Response.Status.BAD_REQUEST)
@@ -64,15 +73,18 @@ class HistoryResource(
                 .build()
         }
 
-        val events = playEventRepository.findByExternalIds(
+        val panachePage = Page.of(page, pageSize)
+        val (events, total) = playEventRepository.findByExternalIds(
+            mediaType = MediaType.SERIES,
             imdbId = imdbId,
             tmdbId = tmdbId,
             tvdbId = tvdbId,
             seasonNumber = season,
-            episodeNumber = episode
+            episodeNumber = episode,
+            page = panachePage
         )
 
-        return Response.ok(events.map { it.toResponse() }).build()
+        return Response.ok(PagedResponse.of(events.map { it.toResponse() }, page, pageSize, total)).build()
     }
 
     private fun PlayEvent.toResponse() = PlayEventResponse(

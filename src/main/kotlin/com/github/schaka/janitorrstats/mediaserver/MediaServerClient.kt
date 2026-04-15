@@ -13,15 +13,17 @@ interface MediaServerClient {
 
     /**
      * Resolves a media server item by its internal ID, returning external IDs and metadata.
+     * [userId] is forwarded to the media server for authorization (required by Jellyfin 10.9+).
      * Returns null if the item cannot be found or has no external IDs.
      */
-    fun getItemById(itemId: String): ResolvedMediaItem?
+    fun getItemById(itemId: String, userId: String): ResolvedMediaItem?
 
     /**
      * Resolves a series by its internal ID, returning series-level external IDs.
+     * [userId] is forwarded to the media server for authorization (required by Jellyfin 10.9+).
      * Used when a session references an episode — the series must be resolved separately.
      */
-    fun getSeriesById(seriesId: String): ResolvedMediaItem?
+    fun getSeriesById(seriesId: String, userId: String): ResolvedMediaItem?
 }
 
 /**

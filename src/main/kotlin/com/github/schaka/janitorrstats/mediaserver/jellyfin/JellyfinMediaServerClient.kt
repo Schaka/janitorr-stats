@@ -44,9 +44,9 @@ class JellyfinMediaServerClient(
         }
     }
 
-    override fun getItemById(itemId: String): ResolvedMediaItem? {
+    override fun getItemById(itemId: String, userId: String): ResolvedMediaItem? {
         return try {
-            val item = api.getItem(itemId, "ProviderIds")
+            val item = api.getItem(itemId, "ProviderIds", userId)
             toResolvedMediaItem(item)
         } catch (e: Exception) {
             Log.error("Failed to resolve Jellyfin item $itemId", e)
@@ -54,8 +54,8 @@ class JellyfinMediaServerClient(
         }
     }
 
-    override fun getSeriesById(seriesId: String): ResolvedMediaItem? {
-        return getItemById(seriesId)
+    override fun getSeriesById(seriesId: String, userId: String): ResolvedMediaItem? {
+        return getItemById(seriesId, userId)
     }
 
     private fun toResolvedMediaItem(item: JellyfinItem): ResolvedMediaItem? {

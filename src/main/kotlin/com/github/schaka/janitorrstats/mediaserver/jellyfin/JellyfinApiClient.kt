@@ -25,12 +25,14 @@ interface JellyfinApiClient {
 
     /**
      * Retrieves a single item by its Jellyfin internal ID, including provider IDs.
+     * [userId] is required by Jellyfin 10.9+ to authorize and scope the item lookup.
      */
     @GET
     @Path("/Items/{itemId}")
     fun getItem(
         @PathParam("itemId") itemId: String,
-        @QueryParam("fields") fields: String
+        @QueryParam("fields") fields: String,
+        @QueryParam("userId") userId: String
     ): JellyfinItem
 
     /**

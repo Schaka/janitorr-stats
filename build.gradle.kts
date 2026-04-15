@@ -29,6 +29,7 @@ dependencies {
 
     // REST
     implementation("io.quarkus:quarkus-rest-jackson")
+    implementation("io.quarkus:quarkus-smallrye-openapi")
 
     // REST client for Jellyfin API
     implementation("io.quarkus:quarkus-rest-client-jackson")
