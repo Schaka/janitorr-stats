@@ -40,7 +40,7 @@ quarkus:
     level: INFO
     category:
       "com.github.schaka":
-        level: DEBUG
+        level: INFO
 
 "%dev":
   quarkus:

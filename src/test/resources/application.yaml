@@ -1,0 +1,4 @@
+jellyfin:
+  # Effectively disable the scheduled poller during tests — tests trigger SessionPoller.poll()
+  # explicitly when they need a cycle, so an auto-firing scheduler would only introduce races.
+  poll-interval: 24h

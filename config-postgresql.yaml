@@ -4,6 +4,12 @@ jellyfin:
   poll-interval: 60s # How often Jellyfin is queried for watch sessions
 
 quarkus:
+  log:
+    level: INFO
+    category:
+      "com.github.schaka":
+        level: INFO # INFO, WARN, DEBUG, TRACE
+
   datasource:
     db-kind: postgresql
     jdbc:
