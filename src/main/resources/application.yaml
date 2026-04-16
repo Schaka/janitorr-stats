@@ -41,6 +41,13 @@ quarkus:
     category:
       "com.github.schaka":
         level: INFO
+    file:
+      enable: false
+      level: INFO
+      rotation:
+        max-file-size: 100M
+        max-backup-index: 14
+        rotate-on-boot: true
 
 "%dev":
   quarkus:
@@ -49,4 +56,8 @@ quarkus:
         enabled: true
     flyway:
       locations: db/migration/common,db/migration/postgres
+    log:
+      file:
+        enable: true
+        path: logs/janitorr-stats.log
 

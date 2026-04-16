@@ -9,6 +9,9 @@ quarkus:
     category:
       "com.github.schaka":
         level: INFO # INFO, WARN, DEBUG, TRACE
+    file:
+      enable: true
+      path: /logs/janitorr-stats.log # mount /logs as a volume in your compose file
   datasource:
     db-kind: sqlite
     jdbc:

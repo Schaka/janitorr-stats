@@ -49,6 +49,7 @@ services:
     volumes:
       - /appdata/janitorr-stats/application.yaml:/work/config/application.yaml
       - /appdata/janitorr-stats/data:/data
+      - /appdata/janitorr-stats/logs:/logs # optional - only needed if quarkus.log.file.enable is true
     ports:
       - "8080:8080" # be careful about publishing, this server has no auth and is best kept only accessible to other containers
     depends_on:
@@ -80,6 +81,7 @@ services:
     volumes:
       - /appdata/janitorr-stats/application.yaml:/work/config/application.yaml
       - /appdata/janitorr-stats/data:/data
+      - /appdata/janitorr-stats/logs:/logs # optional - only needed if quarkus.log.file.enable is true
     ports:
       - "8080:8080" # be careful about publishing, this server has no auth and is best kept only accessible to other containers
 ```
@@ -102,6 +104,8 @@ The config file format follows standard Quarkus YAML. Only the properties you in
 | `quarkus.datasource.username` | — | PostgreSQL only |
 | `quarkus.datasource.password` | — | PostgreSQL only |
 | `quarkus.log.category."com.github.schaka".level` | `DEBUG` | `DEBUG`, `INFO`, or `WARN` |
+| `quarkus.log.file.enable` | `false` | Set to `true` to enable file logging |
+| `quarkus.log.file.path` | — | Path to the log file inside the container (e.g. `/logs/janitorr-stats.log`) |
 
 All properties can alternatively be set as environment variables using Quarkus's standard naming convention (e.g. `jellyfin.base-url` → `JELLYFIN_BASE_URL`). Environment variables take precedence over the mounted config file.
 
