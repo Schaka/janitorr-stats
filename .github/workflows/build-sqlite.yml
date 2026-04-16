@@ -95,7 +95,7 @@ jobs:
           QUARKUS_CONTAINER_IMAGE_REGISTRY: ghcr.io
           QUARKUS_CONTAINER_IMAGE_GROUP: ${{ needs.setup.outputs.owner_lc }}
           QUARKUS_CONTAINER_IMAGE_NAME: janitorr-stats
-          QUARKUS_CONTAINER_IMAGE_TAG: amd64-sqlite-${{ needs.setup.outputs.tag_name }}
+          QUARKUS_CONTAINER_IMAGE_TAG: amd64-${{ needs.setup.outputs.tag_name }}-sqlite
           QUARKUS_CONTAINER_IMAGE_USERNAME: ${{ github.actor }}
           QUARKUS_CONTAINER_IMAGE_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
 
@@ -145,7 +145,7 @@ jobs:
           QUARKUS_CONTAINER_IMAGE_REGISTRY: ghcr.io
           QUARKUS_CONTAINER_IMAGE_GROUP: ${{ needs.setup.outputs.owner_lc }}
           QUARKUS_CONTAINER_IMAGE_NAME: janitorr-stats
-          QUARKUS_CONTAINER_IMAGE_TAG: arm64-sqlite-${{ needs.setup.outputs.tag_name }}
+          QUARKUS_CONTAINER_IMAGE_TAG: arm64-${{ needs.setup.outputs.tag_name }}-sqlite
           QUARKUS_CONTAINER_IMAGE_USERNAME: ${{ github.actor }}
           QUARKUS_CONTAINER_IMAGE_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
 
@@ -169,8 +169,8 @@ jobs:
         with:
           push: true
           tags: |
-            ghcr.io/${{ needs.setup.outputs.owner_lc }}/janitorr-stats:sqlite-${{ needs.setup.outputs.tag_name }}
+            ghcr.io/${{ needs.setup.outputs.owner_lc }}/janitorr-stats:${{ needs.setup.outputs.tag_name }}-sqlite
             ${{ needs.setup.outputs.is_release == 'true' && format('ghcr.io/{0}/janitorr-stats:stable-sqlite', needs.setup.outputs.owner_lc) || '' }}
           sources: |
-            ghcr.io/${{ needs.setup.outputs.owner_lc }}/janitorr-stats:amd64-sqlite-${{ needs.setup.outputs.tag_name }}
-            ghcr.io/${{ needs.setup.outputs.owner_lc }}/janitorr-stats:arm64-sqlite-${{ needs.setup.outputs.tag_name }}
+            ghcr.io/${{ needs.setup.outputs.owner_lc }}/janitorr-stats:amd64-${{ needs.setup.outputs.tag_name }}-sqlite
+            ghcr.io/${{ needs.setup.outputs.owner_lc }}/janitorr-stats:arm64-${{ needs.setup.outputs.tag_name }}-sqlite
