@@ -43,11 +43,14 @@ Copy [`config-postgresql.yaml`](./config-postgresql.yaml), fill in your Jellyfin
 ```yaml
 services:
   janitorr-stats:
-    image: ghcr.io/schaka/janitorr-stats:stable
+    container_name: janitorr-stats
+    image: ghcr.io/schaka/janitorr-stats:native-stable
+    user: 1000:1000
     volumes:
-      - ./config-postgresql.yaml:/work/config/application.yaml
+      - /appdata/janitorr-stats/application.yaml:/work/config/application.yaml
+      - /appdata/janitorr-stats/data:/data
     ports:
-      - "8080:8080"
+      - "8080:8080" # be careful about publishing, this server has no auth and is best kept only accessible to other containers
     depends_on:
       - db
 
@@ -71,12 +74,14 @@ Copy [`config-sqlite.yaml`](./config-sqlite.yaml), fill in your Jellyfin URL and
 ```yaml
 services:
   janitorr-stats:
-    image: ghcr.io/schaka/janitorr-stats:stable
+    container_name: janitorr-stats
+    image: ghcr.io/schaka/janitorr-stats:native-stable
+    user: 1000:1000
     volumes:
-      - ./config-sqlite.yaml:/work/config/application.yaml
-      - ./data:/data
+      - /appdata/janitorr-stats/application.yaml:/work/config/application.yaml
+      - /appdata/janitorr-stats/data:/data
     ports:
-      - "8080:8080"
+      - "8080:8080" # be careful about publishing, this server has no auth and is best kept only accessible to other containers
 ```
 
 The `/data` volume must match the path used in `quarkus.datasource.jdbc.url` inside your config file.
