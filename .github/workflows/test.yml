@@ -43,7 +43,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
 
       - name: Run tests and build
-        run: ./gradlew build -Dquarkus.smallrye-openapi.enabled=true
+        run: ./gradlew build -Dquarkus.smallrye-openapi.enabled=true --no-build-cache
 
       - name: Upload test reports on failure
         if: failure()

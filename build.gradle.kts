@@ -100,10 +100,9 @@ noArg {
     annotation("jakarta.persistence.MappedSuperclass")
 }
 
-// build/openapi is written as a side effect of Quarkus augmentation and is not a declared
-// task output by default. Registering it here ensures Gradle includes it in the build cache
-// entry so the file is present on cache hits (e.g. tag builds that reuse a previously
-// cached main-branch run of the same commit).
+// build/openapi is a side effect of Quarkus augmentation and not a declared task output
+// by default. Registering it here ensures Gradle includes it in the build cache entry,
+// so it is correctly restored on cache hits rather than needing a full re-run.
 tasks.named("quarkusBuild") {
     outputs.dir(layout.buildDirectory.dir("openapi"))
 }
