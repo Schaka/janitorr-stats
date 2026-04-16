@@ -131,7 +131,7 @@ jobs:
           QUARKUS_CONTAINER_IMAGE_REGISTRY: ghcr.io
           QUARKUS_CONTAINER_IMAGE_GROUP: ${{ needs.setup.outputs.owner_lc }}
           QUARKUS_CONTAINER_IMAGE_NAME: janitorr-stats
-          QUARKUS_CONTAINER_IMAGE_TAG: native-amd64-${{ needs.setup.outputs.tag_name }}
+          QUARKUS_CONTAINER_IMAGE_TAG: amd64-${{ needs.setup.outputs.tag_name }}
           QUARKUS_CONTAINER_IMAGE_USERNAME: ${{ github.actor }}
           QUARKUS_CONTAINER_IMAGE_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
 
@@ -185,7 +185,7 @@ jobs:
           QUARKUS_CONTAINER_IMAGE_REGISTRY: ghcr.io
           QUARKUS_CONTAINER_IMAGE_GROUP: ${{ needs.setup.outputs.owner_lc }}
           QUARKUS_CONTAINER_IMAGE_NAME: janitorr-stats
-          QUARKUS_CONTAINER_IMAGE_TAG: native-arm64-${{ needs.setup.outputs.tag_name }}
+          QUARKUS_CONTAINER_IMAGE_TAG: arm64-${{ needs.setup.outputs.tag_name }}
           QUARKUS_CONTAINER_IMAGE_USERNAME: ${{ github.actor }}
           QUARKUS_CONTAINER_IMAGE_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
 
@@ -209,8 +209,8 @@ jobs:
         with:
           push: true
           tags: |
-            ghcr.io/${{ needs.setup.outputs.owner_lc }}/janitorr-stats:native-${{ needs.setup.outputs.tag_name }}
-            ${{ startsWith(github.ref, 'refs/tags/v') && format('ghcr.io/{0}/janitorr-stats:native-stable', needs.setup.outputs.owner_lc) || '' }}
+            ghcr.io/${{ needs.setup.outputs.owner_lc }}/janitorr-stats:${{ needs.setup.outputs.tag_name }}
+            ${{ startsWith(github.ref, 'refs/tags/v') && format('ghcr.io/{0}/janitorr-stats:stable', needs.setup.outputs.owner_lc) || '' }}
           sources: |
-            ghcr.io/${{ needs.setup.outputs.owner_lc }}/janitorr-stats:native-amd64-${{ needs.setup.outputs.tag_name }}
-            ghcr.io/${{ needs.setup.outputs.owner_lc }}/janitorr-stats:native-arm64-${{ needs.setup.outputs.tag_name }}
+            ghcr.io/${{ needs.setup.outputs.owner_lc }}/janitorr-stats:amd64-${{ needs.setup.outputs.tag_name }}
+            ghcr.io/${{ needs.setup.outputs.owner_lc }}/janitorr-stats:arm64-${{ needs.setup.outputs.tag_name }}
