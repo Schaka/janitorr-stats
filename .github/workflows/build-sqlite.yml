@@ -1,31 +1,27 @@
-name: Publish Native Image
+name: Build SQLite Image
 
 on:
-  push:
-    paths:
-      - 'src/**'
-      - 'build.gradle.kts'
-      - 'settings.gradle.kts'
-      - 'gradle.properties'
-      - '.github/workflows/**'
-    branches:
-      - 'main'
-    tags:
-      - '**'
+  workflow_run:
+    workflows: ["Test and Generate"]
+    types: [completed]
 
 jobs:
 
-  # Compute shared values once so both arch build jobs use identical tags.
+  # Gate all subsequent jobs on the upstream workflow having succeeded.
+  # Also compute the tag name and owner from the triggering run's context,
+  # since github.ref in a workflow_run job always points to the default branch.
   setup:
+    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04
     outputs:
       tag_name: ${{ steps.tag_name.outputs.value }}
       owner_lc: ${{ steps.lc_owner.outputs.value }}
+      is_release: ${{ steps.is_release.outputs.value }}
     steps:
       - name: Determine tag name
         id: tag_name
         run: |
-          NAME="${{ github.ref_name }}"
+          NAME="${{ github.event.workflow_run.head_branch }}"
           CLEAN_NAME=$(echo "$NAME" | sed 's/\//-/g')
           echo "value=$CLEAN_NAME" >> $GITHUB_OUTPUT
 
@@ -35,58 +31,25 @@ jobs:
         env:
           OWNER: ${{ github.repository_owner }}
 
-  test:
-    needs: setup
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: actions/setup-java@v5
-        with:
-          java-version: '25'
-          distribution: 'temurin'
-
-      - uses: gradle/actions/setup-gradle@v6
-
-      - name: Run tests
-        run: ./gradlew test
-
-      - name: Upload test reports on failure
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: test-reports
-          path: build/reports/tests/test/
-
-  publish-openapi:
-    needs: [setup, build-native-amd64]
-    if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Download OpenAPI spec artifact
-        uses: actions/download-artifact@v8
-        with:
-          name: openapi-spec
-
-      - name: Upload OpenAPI spec to release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check if release tag
+        id: is_release
         run: |
-          gh release create ${{ needs.setup.outputs.tag_name }} --generate-notes || true
-          gh release upload ${{ needs.setup.outputs.tag_name }} openapi.yaml --clobber
+          if [[ "${{ github.event.workflow_run.head_branch }}" == v* ]]; then
+            echo "value=true" >> $GITHUB_OUTPUT
+          else
+            echo "value=false" >> $GITHUB_OUTPUT
+          fi
 
   build-native-amd64:
-    needs: [setup, test]
+    needs: setup
     runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - uses: actions/setup-java@v5
         with:
@@ -125,31 +88,27 @@ jobs:
             -Dquarkus.package.jar.enabled=false \
             -Dquarkus.native.container-build=true \
             -Dquarkus.native.container-runtime=docker \
-            -Dquarkus.native.builder-image=quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-25
+            -Dquarkus.native.builder-image=quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-25 \
+            -Dquarkus.datasource.db-kind=sqlite
         env:
           QUARKUS_CONTAINER_IMAGE_PUSH: "true"
           QUARKUS_CONTAINER_IMAGE_REGISTRY: ghcr.io
           QUARKUS_CONTAINER_IMAGE_GROUP: ${{ needs.setup.outputs.owner_lc }}
           QUARKUS_CONTAINER_IMAGE_NAME: janitorr-stats
-          QUARKUS_CONTAINER_IMAGE_TAG: amd64-${{ needs.setup.outputs.tag_name }}
+          QUARKUS_CONTAINER_IMAGE_TAG: amd64-sqlite-${{ needs.setup.outputs.tag_name }}
           QUARKUS_CONTAINER_IMAGE_USERNAME: ${{ github.actor }}
           QUARKUS_CONTAINER_IMAGE_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Save OpenAPI spec as workflow artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: openapi-spec
-          path: build/openapi/openapi.yaml
-          if-no-files-found: error
-
   build-native-arm64:
-    needs: [setup, test]
+    needs: setup
     runs-on: ubuntu-24.04-arm
     permissions:
       contents: read
       packages: write
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - uses: actions/setup-java@v5
         with:
@@ -179,17 +138,18 @@ jobs:
             -Dquarkus.package.jar.enabled=false \
             -Dquarkus.native.container-build=true \
             -Dquarkus.native.container-runtime=docker \
-            -Dquarkus.native.builder-image=quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-25
+            -Dquarkus.native.builder-image=quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-25 \
+            -Dquarkus.datasource.db-kind=sqlite
         env:
           QUARKUS_CONTAINER_IMAGE_PUSH: "true"
           QUARKUS_CONTAINER_IMAGE_REGISTRY: ghcr.io
           QUARKUS_CONTAINER_IMAGE_GROUP: ${{ needs.setup.outputs.owner_lc }}
           QUARKUS_CONTAINER_IMAGE_NAME: janitorr-stats
-          QUARKUS_CONTAINER_IMAGE_TAG: arm64-${{ needs.setup.outputs.tag_name }}
+          QUARKUS_CONTAINER_IMAGE_TAG: arm64-sqlite-${{ needs.setup.outputs.tag_name }}
           QUARKUS_CONTAINER_IMAGE_USERNAME: ${{ github.actor }}
           QUARKUS_CONTAINER_IMAGE_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
 
-  combine-images:
+  combine:
     needs: [setup, build-native-amd64, build-native-arm64]
     runs-on: ubuntu-24.04
     permissions:
@@ -204,13 +164,13 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       # Combine the per-arch images into a single multi-arch manifest.
-      # On a v-prefixed tag release, also push a stable tag.
+      # On a v-prefixed tag release, also push a stable-sqlite tag.
       - uses: int128/docker-manifest-create-action@v2
         with:
           push: true
           tags: |
-            ghcr.io/${{ needs.setup.outputs.owner_lc }}/janitorr-stats:${{ needs.setup.outputs.tag_name }}
-            ${{ startsWith(github.ref, 'refs/tags/v') && format('ghcr.io/{0}/janitorr-stats:stable', needs.setup.outputs.owner_lc) || '' }}
+            ghcr.io/${{ needs.setup.outputs.owner_lc }}/janitorr-stats:sqlite-${{ needs.setup.outputs.tag_name }}
+            ${{ needs.setup.outputs.is_release == 'true' && format('ghcr.io/{0}/janitorr-stats:stable-sqlite', needs.setup.outputs.owner_lc) || '' }}
           sources: |
-            ghcr.io/${{ needs.setup.outputs.owner_lc }}/janitorr-stats:amd64-${{ needs.setup.outputs.tag_name }}
-            ghcr.io/${{ needs.setup.outputs.owner_lc }}/janitorr-stats:arm64-${{ needs.setup.outputs.tag_name }}
+            ghcr.io/${{ needs.setup.outputs.owner_lc }}/janitorr-stats:amd64-sqlite-${{ needs.setup.outputs.tag_name }}
+            ghcr.io/${{ needs.setup.outputs.owner_lc }}/janitorr-stats:arm64-sqlite-${{ needs.setup.outputs.tag_name }}

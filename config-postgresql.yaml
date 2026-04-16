@@ -10,7 +10,7 @@ quarkus:
       "com.github.schaka":
         level: INFO # INFO, WARN, DEBUG, TRACE
     file:
-      enable: true
+      enabled: true
       path: /logs/janitorr-stats.log # mount /logs as a volume in your compose file
 
   datasource:

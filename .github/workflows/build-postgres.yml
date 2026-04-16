@@ -1,0 +1,174 @@
+name: Build Postgres Image
+
+on:
+  workflow_run:
+    workflows: ["Test and Generate"]
+    types: [completed]
+
+jobs:
+
+  # Gate all subsequent jobs on the upstream workflow having succeeded.
+  # Also compute the tag name and owner from the triggering run's context,
+  # since github.ref in a workflow_run job always points to the default branch.
+  setup:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    outputs:
+      tag_name: ${{ steps.tag_name.outputs.value }}
+      owner_lc: ${{ steps.lc_owner.outputs.value }}
+      is_release: ${{ steps.is_release.outputs.value }}
+    steps:
+      - name: Determine tag name
+        id: tag_name
+        run: |
+          NAME="${{ github.event.workflow_run.head_branch }}"
+          CLEAN_NAME=$(echo "$NAME" | sed 's/\//-/g')
+          echo "value=$CLEAN_NAME" >> $GITHUB_OUTPUT
+
+      - name: Force lower case for repository owner
+        id: lc_owner
+        run: echo "value=${OWNER,,}" >> $GITHUB_OUTPUT
+        env:
+          OWNER: ${{ github.repository_owner }}
+
+      - name: Check if release tag
+        id: is_release
+        run: |
+          if [[ "${{ github.event.workflow_run.head_branch }}" == v* ]]; then
+            echo "value=true" >> $GITHUB_OUTPUT
+          else
+            echo "value=false" >> $GITHUB_OUTPUT
+          fi
+
+  build-native-amd64:
+    needs: setup
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      # Native compilation pulls the 2 GB+ Mandrel builder image, so free space first.
+      - name: Free GitHub runner disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          docker system prune -af
+
+      - name: Log into GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Avoids Docker Hub rate limits when pulling the Mandrel builder image.
+      - name: Log in to Docker Hub
+        continue-on-error: true
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Build and push native amd64 image
+        run: |
+          ./gradlew build -x test \
+            -Dquarkus.native.enabled=true \
+            -Dquarkus.package.jar.enabled=false \
+            -Dquarkus.native.container-build=true \
+            -Dquarkus.native.container-runtime=docker \
+            -Dquarkus.native.builder-image=quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-25
+        env:
+          QUARKUS_CONTAINER_IMAGE_PUSH: "true"
+          QUARKUS_CONTAINER_IMAGE_REGISTRY: ghcr.io
+          QUARKUS_CONTAINER_IMAGE_GROUP: ${{ needs.setup.outputs.owner_lc }}
+          QUARKUS_CONTAINER_IMAGE_NAME: janitorr-stats
+          QUARKUS_CONTAINER_IMAGE_TAG: amd64-${{ needs.setup.outputs.tag_name }}
+          QUARKUS_CONTAINER_IMAGE_USERNAME: ${{ github.actor }}
+          QUARKUS_CONTAINER_IMAGE_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+
+  build-native-arm64:
+    needs: setup
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Log into GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        continue-on-error: true
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Build and push native arm64 image
+        run: |
+          ./gradlew build -x test \
+            -Dquarkus.native.enabled=true \
+            -Dquarkus.package.jar.enabled=false \
+            -Dquarkus.native.container-build=true \
+            -Dquarkus.native.container-runtime=docker \
+            -Dquarkus.native.builder-image=quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-25
+        env:
+          QUARKUS_CONTAINER_IMAGE_PUSH: "true"
+          QUARKUS_CONTAINER_IMAGE_REGISTRY: ghcr.io
+          QUARKUS_CONTAINER_IMAGE_GROUP: ${{ needs.setup.outputs.owner_lc }}
+          QUARKUS_CONTAINER_IMAGE_NAME: janitorr-stats
+          QUARKUS_CONTAINER_IMAGE_TAG: arm64-${{ needs.setup.outputs.tag_name }}
+          QUARKUS_CONTAINER_IMAGE_USERNAME: ${{ github.actor }}
+          QUARKUS_CONTAINER_IMAGE_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+
+  combine:
+    needs: [setup, build-native-amd64, build-native-arm64]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Log into GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Combine the per-arch images into a single multi-arch manifest.
+      # On a v-prefixed tag release, also push a stable tag.
+      - uses: int128/docker-manifest-create-action@v2
+        with:
+          push: true
+          tags: |
+            ghcr.io/${{ needs.setup.outputs.owner_lc }}/janitorr-stats:${{ needs.setup.outputs.tag_name }}
+            ${{ needs.setup.outputs.is_release == 'true' && format('ghcr.io/{0}/janitorr-stats:stable', needs.setup.outputs.owner_lc) || '' }}
+          sources: |
+            ghcr.io/${{ needs.setup.outputs.owner_lc }}/janitorr-stats:amd64-${{ needs.setup.outputs.tag_name }}
+            ghcr.io/${{ needs.setup.outputs.owner_lc }}/janitorr-stats:arm64-${{ needs.setup.outputs.tag_name }}

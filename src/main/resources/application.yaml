@@ -42,7 +42,7 @@ quarkus:
       "com.github.schaka":
         level: INFO
     file:
-      enable: false
+      enabled: false
       level: INFO
       rotation:
         max-file-size: 100M
@@ -58,6 +58,6 @@ quarkus:
       locations: db/migration/common,db/migration/postgres
     log:
       file:
-        enable: true
+        enabled: true
         path: logs/janitorr-stats.log
 

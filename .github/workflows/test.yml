@@ -1,0 +1,81 @@
+name: Test and Generate
+
+on:
+  push:
+    paths:
+      - 'src/**'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle.properties'
+      - '.github/workflows/**'
+    branches:
+      - 'main'
+    tags:
+      - '**'
+
+jobs:
+
+  setup:
+    runs-on: ubuntu-24.04
+    outputs:
+      tag_name: ${{ steps.tag_name.outputs.value }}
+    steps:
+      - name: Determine tag name
+        id: tag_name
+        run: |
+          NAME="${{ github.ref_name }}"
+          CLEAN_NAME=$(echo "$NAME" | sed 's/\//-/g')
+          echo "value=$CLEAN_NAME" >> $GITHUB_OUTPUT
+
+  # Run tests and generate the OpenAPI spec via a JVM build.
+  # Native image builds in separate workflows start only after this succeeds.
+  test-and-generate:
+    needs: setup
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Run tests and build
+        run: ./gradlew build
+
+      - name: Upload test reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports
+          path: build/reports/tests/test/
+
+      - name: Save OpenAPI spec as workflow artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: openapi-spec
+          path: build/openapi/openapi.yaml
+          if-no-files-found: error
+
+  publish-openapi:
+    needs: [setup, test-and-generate]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Download OpenAPI spec artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: openapi-spec
+
+      - name: Upload OpenAPI spec to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create ${{ needs.setup.outputs.tag_name }} --generate-notes || true
+          gh release upload ${{ needs.setup.outputs.tag_name }} openapi.yaml --clobber

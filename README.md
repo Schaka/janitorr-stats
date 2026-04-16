@@ -44,7 +44,7 @@ Copy [`config-postgresql.yaml`](./config-postgresql.yaml), fill in your Jellyfin
 services:
   janitorr-stats:
     container_name: janitorr-stats
-    image: ghcr.io/schaka/janitorr-stats:native-stable
+    image: ghcr.io/schaka/janitorr-stats:stable
     user: 1000:1000
     volumes:
       - /appdata/janitorr-stats/application.yaml:/work/config/application.yaml
@@ -76,7 +76,7 @@ Copy [`config-sqlite.yaml`](./config-sqlite.yaml), fill in your Jellyfin URL and
 services:
   janitorr-stats:
     container_name: janitorr-stats
-    image: ghcr.io/schaka/janitorr-stats:native-stable
+    image: ghcr.io/schaka/janitorr-stats:stable-sqlite
     user: 1000:1000
     volumes:
       - /appdata/janitorr-stats/application.yaml:/work/config/application.yaml
@@ -104,7 +104,7 @@ The config file format follows standard Quarkus YAML. Only the properties you in
 | `quarkus.datasource.username` | — | PostgreSQL only |
 | `quarkus.datasource.password` | — | PostgreSQL only |
 | `quarkus.log.category."com.github.schaka".level` | `DEBUG` | `DEBUG`, `INFO`, or `WARN` |
-| `quarkus.log.file.enable` | `false` | Set to `true` to enable file logging |
+| `quarkus.log.file.enabled` | `false` | Set to `true` to enable file logging |
 | `quarkus.log.file.path` | — | Path to the log file inside the container (e.g. `/logs/janitorr-stats.log`) |
 
 All properties can alternatively be set as environment variables using Quarkus's standard naming convention (e.g. `jellyfin.base-url` → `JELLYFIN_BASE_URL`). Environment variables take precedence over the mounted config file.
