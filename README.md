@@ -46,6 +46,8 @@ services:
     container_name: janitorr-stats
     image: ghcr.io/schaka/janitorr-stats:stable
     user: 1000:1000
+    environment:
+      TZ: Europe/Berlin
     volumes:
       - /appdata/janitorr-stats/application.yaml:/work/config/application.yaml
       - /appdata/janitorr-stats/data:/data
@@ -78,6 +80,8 @@ services:
     container_name: janitorr-stats
     image: ghcr.io/schaka/janitorr-stats:stable-sqlite
     user: 1000:1000
+    environment:
+      TZ: Europe/Berlin
     volumes:
       - /appdata/janitorr-stats/application.yaml:/work/config/application.yaml
       - /appdata/janitorr-stats/data:/data

@@ -32,6 +32,9 @@ quarkus:
     group: schaka
     name: janitorr-stats
 
+  native:
+    additional-build-args: -H:+IncludeAllTimeZones
+
   jib:
     base-jvm-image: registry.access.redhat.com/ubi9/openjdk-25-runtime:latest
     base-native-image: quay.io/quarkus/ubi9-quarkus-micro-image:2.0
