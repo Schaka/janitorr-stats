@@ -19,6 +19,7 @@ repositories {
 val quarkusPlatformGroupId: String by project
 val quarkusPlatformArtifactId: String by project
 val quarkusPlatformVersion: String by project
+val sqliteVersion: String by project
 
 dependencies {
     implementation(platform("$quarkusPlatformGroupId:$quarkusPlatformArtifactId:$quarkusPlatformVersion"))
@@ -37,6 +38,7 @@ dependencies {
     // Persistence
     implementation("io.quarkus:quarkus-hibernate-orm-panache-kotlin")
     implementation("io.quarkus:quarkus-jdbc-postgresql")
+    implementation("io.quarkiverse.jdbc:quarkus-jdbc-sqlite:$sqliteVersion")
 
     // Container image (Jib — no Dockerfile required)
     implementation("io.quarkus:quarkus-container-image-jib")
