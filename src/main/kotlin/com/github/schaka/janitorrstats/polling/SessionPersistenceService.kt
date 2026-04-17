@@ -138,16 +138,16 @@ class SessionPersistenceService(
         positionMs: Long,
         percentComplete: Int
     ) {
+        if (positionMs == 0L) return
+
         val existing = playEventRepository.findLatestForSession(user.id, mediaItem.id, seasonNumber, episodeNumber)
 
         if (existing != null) {
-            if (positionMs > existing.positionMs) {
-                existing.positionMs = positionMs
-                existing.percentComplete = percentComplete
-                existing.completed = percentComplete >= COMPLETION_THRESHOLD
-                existing.playedAt = Instant.now()
-                Log.debug("Updated play event for ${user.username} - ${mediaItem.title} (${percentComplete}%)")
-            }
+            existing.positionMs = positionMs
+            existing.percentComplete = percentComplete
+            existing.completed = percentComplete >= COMPLETION_THRESHOLD
+            existing.playedAt = Instant.now()
+            Log.debug("Updated play event for ${user.username} - ${mediaItem.title} (${percentComplete}%)")
             return
         }
 

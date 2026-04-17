@@ -121,6 +121,23 @@ class SessionPersistenceServiceTest {
     }
 
     @Test
+    fun `skips recording when positionMs is exactly zero`() = inTx {
+        service.persistSession(movieSession(positionTicks = 0L), movieResolved(), null, null)
+        assertEquals(0, playEventRepository.count())
+    }
+
+    @Test
+    fun `allows updating an event to a lower position when user jumps back`() = inTx {
+        service.persistSession(movieSession(positionTicks = 5_000_000_000L), movieResolved(), null, null)
+        service.persistSession(movieSession(positionTicks = 1_000_000_000L), movieResolved(), null, null)
+
+        assertEquals(1, playEventRepository.count())
+        val event = playEventRepository.listAll().single()
+        assertEquals(100_000L, event.positionMs)
+        assertEquals(10, event.percentComplete)
+    }
+
+    @Test
     fun `persists an episode session with its season row`() = inTx {
         val episodeSession = MediaServerSession(
             userId = "juser-2", username = "bob", itemId = "jf-ep-1", itemName = "Pilot", itemType = "Episode",
