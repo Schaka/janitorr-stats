@@ -34,11 +34,11 @@ It is intentionally minimal. There is no UI, no statistics aggregation, no dashb
 
 The service is distributed as a multi-arch Docker image supporting `linux/amd64` and `linux/arm64`. No JVM is required at runtime - the image contains a natively compiled binary.
 
-Configuration is supplied by mounting a YAML file into the container at `/work/config/application.yaml`. The repo provides two ready-to-use templates — pick the one matching your database, fill in your values, and mount it.
+Configuration is supplied by mounting a YAML file into the container at `/work/config/application.yml`. The repo provides two ready-to-use templates — pick the one matching your database, fill in your values, and mount it.
 
 ### Docker Compose (PostgreSQL)
 
-Copy [`config-postgresql.yaml`](./config-postgresql.yaml), fill in your Jellyfin URL, API key, and database credentials, then:
+Copy [`config-postgresql.yml`](./config-postgresql.yml), fill in your Jellyfin URL, API key, and database credentials, then:
 
 ```yaml
 services:
@@ -49,7 +49,7 @@ services:
     environment:
       TZ: Europe/Berlin
     volumes:
-      - /appdata/janitorr-stats/application.yaml:/work/config/application.yaml
+      - /appdata/janitorr-stats/application.yml:/work/config/application.yml
       - /appdata/janitorr-stats/data:/data
       - /appdata/janitorr-stats/logs:/logs # optional - only needed if quarkus.log.file.enable is true
     ports:
@@ -72,7 +72,7 @@ volumes:
 
 ### Docker Compose (SQLite)
 
-Copy [`config-sqlite.yaml`](./config-sqlite.yaml), fill in your Jellyfin URL and API key, and adjust the database path if needed, then:
+Copy [`config-sqlite.yml`](./config-sqlite.yml), fill in your Jellyfin URL and API key, and adjust the database path if needed, then:
 
 ```yaml
 services:
@@ -83,7 +83,7 @@ services:
     environment:
       TZ: Europe/Berlin
     volumes:
-      - /appdata/janitorr-stats/application.yaml:/work/config/application.yaml
+      - /appdata/janitorr-stats/application.yml:/work/config/application.yml
       - /appdata/janitorr-stats/data:/data
       - /appdata/janitorr-stats/logs:/logs # optional - only needed if quarkus.log.file.enable is true
     ports:
