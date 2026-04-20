@@ -27,7 +27,8 @@ jobs:
           CLEAN_NAME=$(echo "$NAME" | sed 's/\//-/g')
           echo "value=$CLEAN_NAME" >> $GITHUB_OUTPUT
 
-  # Run tests and generate the OpenAPI spec via a JVM build.
+  # Run JVM unit tests, build a native binary, run integration tests against it,
+  # and generate the OpenAPI spec — all in one Gradle invocation.
   # Native image builds in separate workflows start only after this succeeds.
   test-and-generate:
     needs: setup
@@ -42,15 +43,32 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v6
 
-      - name: Run tests and build
-        run: ./gradlew build -Dquarkus.smallrye-openapi.enabled=true --no-build-cache
+      # Native compilation pulls the 2 GB+ Mandrel builder image, so free space first.
+      - name: Free GitHub runner disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          docker system prune -af
+
+      - name: Run tests, build native, and run integration tests
+        run: |
+          ./gradlew build quarkusIntTest \
+            -Dquarkus.native.enabled=true \
+            -Dquarkus.native.container-build=true \
+            -Dquarkus.native.container-runtime=docker \
+            -Dquarkus.native.builder-image=quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-25 \
+            -Dquarkus.smallrye-openapi.enabled=true \
+            --no-build-cache
 
       - name: Upload test reports on failure
         if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: test-reports
-          path: build/reports/tests/test/
+          path: |
+            build/reports/tests/test/
+            build/reports/tests/quarkusIntTest/
 
       - name: Save OpenAPI spec as workflow artifact
         uses: actions/upload-artifact@v7

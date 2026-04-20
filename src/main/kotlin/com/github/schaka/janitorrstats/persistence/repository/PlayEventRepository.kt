@@ -58,7 +58,7 @@ class PlayEventRepository : PanacheRepositoryBase<PlayEvent, UUID> {
             "SELECT pe FROM PlayEvent pe JOIN FETCH pe.user WHERE $whereClause ORDER BY pe.playedAt DESC",
             params
         )
-        val total = find("SELECT pe FROM PlayEvent pe WHERE $whereClause", params).count()
+        val total = count("FROM PlayEvent pe WHERE $whereClause", params)
         val items = query.page(page).list()
 
         return items to total

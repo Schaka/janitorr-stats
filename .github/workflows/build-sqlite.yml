@@ -99,6 +99,7 @@ jobs:
           QUARKUS_CONTAINER_IMAGE_USERNAME: ${{ github.actor }}
           QUARKUS_CONTAINER_IMAGE_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
 
+
   build-native-arm64:
     needs: setup
     runs-on: ubuntu-24.04-arm

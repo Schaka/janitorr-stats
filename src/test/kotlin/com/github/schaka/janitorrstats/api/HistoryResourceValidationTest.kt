@@ -1,8 +1,9 @@
 package com.github.schaka.janitorrstats.api
 
 import com.github.schaka.janitorrstats.persistence.repository.PlayEventRepository
-import org.junit.jupiter.api.Assertions.assertEquals
+import jakarta.ws.rs.BadRequestException
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 
 /**
  * Pure unit tests for [HistoryResource] input validation. These do not require a running
@@ -15,16 +16,18 @@ class HistoryResourceValidationTest {
 
     @Test
     fun `movie history rejects request without any ID`() {
-        val response = resource.getMovieHistory(imdbId = null, tmdbId = null, page = 0, pageSize = 100)
-        assertEquals(400, response.status)
+        assertThrows<BadRequestException> {
+            resource.getMovieHistory(imdbId = null, tmdbId = null, page = 0, pageSize = 100)
+        }
     }
 
     @Test
     fun `show history rejects request without any ID`() {
-        val response = resource.getShowHistory(
-            imdbId = null, tmdbId = null, tvdbId = null,
-            season = null, episode = null, page = 0, pageSize = 100
-        )
-        assertEquals(400, response.status)
+        assertThrows<BadRequestException> {
+            resource.getShowHistory(
+                imdbId = null, tmdbId = null, tvdbId = null,
+                season = null, episode = null, page = 0, pageSize = 100
+            )
+        }
     }
 }

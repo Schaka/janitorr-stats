@@ -4,12 +4,12 @@ import com.github.schaka.janitorrstats.persistence.entity.MediaType
 import com.github.schaka.janitorrstats.persistence.entity.PlayEvent
 import com.github.schaka.janitorrstats.persistence.repository.PlayEventRepository
 import io.quarkus.panache.common.Page
+import jakarta.ws.rs.BadRequestException
 import jakarta.ws.rs.DefaultValue
 import jakarta.ws.rs.GET
 import jakarta.ws.rs.Path
 import jakarta.ws.rs.Produces
 import jakarta.ws.rs.QueryParam
-import jakarta.ws.rs.core.Response
 
 /**
  * REST resource for querying play history by external media IDs.
@@ -31,11 +31,9 @@ class HistoryResource(
         @QueryParam("tmdbId") tmdbId: String?,
         @QueryParam("page") @DefaultValue("0") page: Int,
         @QueryParam("size") @DefaultValue("100") pageSize: Int
-    ): Response {
+    ): PagedResponse<PlayEventResponse> {
         if (imdbId == null && tmdbId == null) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                .entity(mapOf("error" to "At least one of imdbId or tmdbId is required"))
-                .build()
+            throw BadRequestException("At least one of imdbId or tmdbId is required")
         }
 
         val panachePage = Page.of(page, pageSize)
@@ -49,7 +47,7 @@ class HistoryResource(
             page = panachePage
         )
 
-        return Response.ok(PagedResponse.of(events.map { it.toResponse() }, page, pageSize, total)).build()
+        return PagedResponse.of(events.map { it.toResponse() }, page, pageSize, total)
     }
 
     /**
@@ -66,11 +64,9 @@ class HistoryResource(
         @QueryParam("episode") episode: Int?,
         @QueryParam("page") @DefaultValue("0") page: Int,
         @QueryParam("size") @DefaultValue("100") pageSize: Int
-    ): Response {
+    ): PagedResponse<PlayEventResponse> {
         if (imdbId == null && tmdbId == null && tvdbId == null) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                .entity(mapOf("error" to "At least one of imdbId, tmdbId, or tvdbId is required"))
-                .build()
+            throw BadRequestException("At least one of imdbId, tmdbId, or tvdbId is required")
         }
 
         val panachePage = Page.of(page, pageSize)
@@ -84,7 +80,7 @@ class HistoryResource(
             page = panachePage
         )
 
-        return Response.ok(PagedResponse.of(events.map { it.toResponse() }, page, pageSize, total)).build()
+        return PagedResponse.of(events.map { it.toResponse() }, page, pageSize, total)
     }
 
     private fun PlayEvent.toResponse() = PlayEventResponse(
