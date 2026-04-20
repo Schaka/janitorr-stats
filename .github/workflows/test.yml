@@ -51,14 +51,17 @@ jobs:
           sudo rm -rf /opt/ghc
           docker system prune -af
 
-      - name: Run tests, build native, and run integration tests
+      - name: Run JVM tests and generate OpenAPI spec
+        run: ./gradlew build -Dquarkus.smallrye-openapi.enabled=true --no-build-cache
+
+      - name: Run integration tests against native binary
         run: |
-          ./gradlew build quarkusIntTest \
+          ./gradlew quarkusIntTest \
             -Dquarkus.native.enabled=true \
+            -Dquarkus.package.jar.enabled=false \
             -Dquarkus.native.container-build=true \
             -Dquarkus.native.container-runtime=docker \
             -Dquarkus.native.builder-image=quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-25 \
-            -Dquarkus.smallrye-openapi.enabled=true \
             --no-build-cache
 
       - name: Upload test reports on failure
