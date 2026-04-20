@@ -34,6 +34,9 @@ quarkus:
 
   native:
     additional-build-args: -H:+IncludeAllTimeZones
+    container-build: true
+    container-runtime: docker
+    builder-image: quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-25
 
   jib:
     base-jvm-image: registry.access.redhat.com/ubi9/openjdk-25-runtime:latest

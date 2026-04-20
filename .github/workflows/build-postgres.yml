@@ -85,10 +85,7 @@ jobs:
         run: |
           ./gradlew build -x test \
             -Dquarkus.native.enabled=true \
-            -Dquarkus.package.jar.enabled=false \
-            -Dquarkus.native.container-build=true \
-            -Dquarkus.native.container-runtime=docker \
-            -Dquarkus.native.builder-image=quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-25
+            -Dquarkus.package.jar.enabled=false
         env:
           QUARKUS_CONTAINER_IMAGE_PUSH: "true"
           QUARKUS_CONTAINER_IMAGE_REGISTRY: ghcr.io
@@ -135,10 +132,7 @@ jobs:
         run: |
           ./gradlew build -x test \
             -Dquarkus.native.enabled=true \
-            -Dquarkus.package.jar.enabled=false \
-            -Dquarkus.native.container-build=true \
-            -Dquarkus.native.container-runtime=docker \
-            -Dquarkus.native.builder-image=quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-25
+            -Dquarkus.package.jar.enabled=false
         env:
           QUARKUS_CONTAINER_IMAGE_PUSH: "true"
           QUARKUS_CONTAINER_IMAGE_REGISTRY: ghcr.io
