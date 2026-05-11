@@ -33,7 +33,7 @@ quarkus:
     name: janitorr-stats
 
   native:
-    additional-build-args: -H:+IncludeAllTimeZones
+    additional-build-args: -H:+IncludeAllTimeZones,-march=compatibility
     container-build: true
     container-runtime: docker
     builder-image: quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-25
