@@ -64,7 +64,7 @@ services:
       POSTGRES_USER: janitorr_stats
       POSTGRES_PASSWORD: secret
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql
 
 volumes:
   pgdata:
